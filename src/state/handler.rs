@@ -41,3 +41,23 @@ impl Block {
         self.id != invalid_id
     }
 }
+
+#[derive(Serialize, Deserialize)]
+struct TimeJson {
+    time: u64
+}
+impl Default for TimeJson {
+    fn default() -> TimeJson {
+        TimeJson {
+            time: 0,
+        }
+    }
+}
+
+pub fn is_older_than(old: Value, new: Value) -> bool {
+    let old_time: TimeJson = serde_json::from_value(old)
+        .unwrap_or(TimeJson::default());
+    let new_time: TimeJson = serde_json::from_value(new)
+        .unwrap_or(TimeJson::default());
+    new_time.time >= old_time.time
+}
