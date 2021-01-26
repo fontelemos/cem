@@ -1,14 +1,27 @@
 #[cfg(test)]
-use std::sync::RwLock;
-use std::sync::{Arc, Barrier};
-use log::info;
+use log::{info, trace};
+use std::sync::{Arc, Mutex, RwLock};
+use std::time::Instant;
 
-use cem::state::handler::{build_state, is_older_than, merge, Block};
-use cem::threading::threadpool::ThreadPool;
 use cem::helpers::init_log;
+use cem::state::handler::{build_state, is_older_than, merge, Block};
 
-#[test]
-fn concurrent_insert() {
+fn build_expected_content<'a>() -> &'a str {
+  r#"{
+    "id": "soiadj9087asdbnjk",
+    "content": {
+      "time": 20,
+      "hash": "2230o363glhhh64",
+      "generation": 243,
+      "display_name": "Uruk the very VERY BIIIGGGGG barbarian!!!!!",
+      "attack": {
+        "axe": "9001dmg"
+      }
+    }
+  }"#
+}
+
+fn build_response_array_mock<'a>() -> Vec<&'a str> {
   let responses1: Vec<&str> = vec![
     r#"{
         "id": "soiadj9087asdbnjk",
@@ -45,57 +58,66 @@ fn concurrent_insert() {
           }"#,
   ];
 
-  let responses2: Vec<&str> = responses1.iter().copied().rev().collect();
-  let responses3: Vec<&str> = responses1.clone();
-  let responses: Vec<&str> = [responses1, responses2, responses3].concat();
-
-  let expected_block = Block::from(
-    r#"{
-    "id": "soiadj9087asdbnjk",
-    "content": {
-      "time": 2,
-      "hash": "2230o363glhhh64",
-      "generation": 243,
-      "display_name": "Uruk the very big barbarian!!!!!",
-      "attack": {
-        "axe": "100dmg"
-      }
+  let number_of_response_copies = 100;
+  let mut responses_temp = vec![];
+  for index in 0..number_of_response_copies {
+    let mut responses2: Vec<&str> = responses1.clone();
+    if index == number_of_response_copies / 2 {
+      responses2.push(build_expected_content())
     }
-  }"#,
-  );
+    responses_temp.push(responses2);
+  }
+  let responses = responses_temp.concat();
+  responses
+}
 
+#[test]
+fn concurrent_insert() {
   init_log();
-  let n_jobs = 9;
-  let state_lock = Arc::new(RwLock::new(build_state()));
-  let pool = ThreadPool::new(n_jobs);
+  let responses: Vec<&str> = build_response_array_mock();
+  let n_of_responses = responses.len();
+  let rt = tokio::runtime::Runtime::new().unwrap();
+  let now = Instant::now();
 
-  let barrier = Arc::new(Barrier::new(n_jobs + 1));
+  rt.block_on(async {
+    let state_lock = Arc::new(RwLock::new(build_state()));
+    let counter_lock = Arc::new(Mutex::new(0));
+    let mut handles = vec![];
 
-  for response in responses {
-    let current_state_lock = state_lock.clone();
-    let barrier = barrier.clone();
+    for response in responses {
+      let current_state_lock = state_lock.clone();
+      let current_counter_lock = counter_lock.clone();
 
-    pool.execute(move || {
-      let block = Block::from(response);
-      let mut state = current_state_lock.write().unwrap();
-      info!("[{}] Got the lock", block.content["time"].clone());
-      match state.get(&block.id.clone()) {
-        Some(old_content) => {
-          if is_older_than(old_content.clone(), block.content.clone()) {
-            let merged_content = merge(old_content.clone(), block.content);
-            state.insert(block.id.clone(), merged_content);
+      handles.push(tokio::spawn(async move {
+        let block = Block::from(response);
+        let mut state = current_state_lock.write().unwrap();
+        trace!("[{}] Got the lock", block.content["time"].clone());
+        match state.get(&block.id.clone()) {
+          Some(old_content) => {
+            if is_older_than(old_content.clone(), block.content.clone()) {
+              let merged_content = merge(old_content.clone(), block.content);
+              state.insert(block.id.clone(), merged_content);
+            }
+          }
+          None => {
+            state.insert(block.id.clone(), block.content);
           }
         }
-        None => {
-          state.insert(block.id.clone(), block.content);
-        }
-      }
-      drop(state);
-      barrier.wait(); // wait other threads to finish
-    })
-  }
-  barrier.wait();
-  let current_state_lock = state_lock.write().unwrap();
-  let content = current_state_lock.get("soiadj9087asdbnjk").unwrap();
-  assert_eq!(content, &expected_block.content);
+        let mut counter = current_counter_lock.lock().unwrap();
+        *counter += 1;
+      }));
+    }
+    futures::future::join_all(handles).await;
+
+    let current_state = state_lock.write().unwrap();
+    let counter = counter_lock.lock().unwrap();
+
+    let content = current_state.get("soiadj9087asdbnjk").unwrap();
+    let expected_block = Block::from(build_expected_content());
+
+    info!("tokio processing took: {} ms", now.elapsed().as_millis());
+    info!("{} items processed", *counter);
+    assert_eq!(content, &expected_block.content);
+    assert_eq!(*counter, n_of_responses);
+  });
 }
