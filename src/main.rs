@@ -1,34 +1,71 @@
-use std::net::TcpListener;
-use std::sync::Arc;
-use std::sync::RwLock;
-// use tungstenite::server::accept;
-// use tungstenite::Message;
-use log::info;
-
+use std::{io::Error, collections::HashMap};
+use tokio::net::{TcpListener, TcpStream};
+use std::sync::{RwLock, Arc};
+use futures_util::{StreamExt, stream::TryStreamExt};
+use serde_json::{Value};
+use log::{info, debug};
 use cem::helpers::{ init_log };
-//use cem::threading::threadpool::ThreadPool;
+use cem::state::handler::{build_state, is_older_than, merge, Block};
 
-fn main() {
-    println!("Hello, world!");
+type StateLock = Arc<RwLock<HashMap<String, Value>>>;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     init_log();
-    // let game_state_lock = Arc::new(RwLock::new(game_state));
-    // let pool = ThreadPool::new(3);
+    info!("Starting CEM :D");
+    let addr = "127.0.0.1:9001".to_string();
+    let try_socket = TcpListener::bind(&addr).await;
+    let listener = try_socket.expect("Failed to bind");
+    info!("Listening on: {}", addr);
 
-    // info!("Hello, world! Starting websocket seeeeeeerver on 9001");
-    // let server = TcpListener::bind("127.0.0.1:9001").unwrap();
+    let state_lock: StateLock = Arc::new(RwLock::new(build_state()));
 
-    // for stream in server.incoming() {
-    //     // let current_state_lock = game_state_lock.clone();
+    while let Ok((stream, _)) = listener.accept().await {
+        tokio::spawn(handle_connection(stream, state_lock.clone()));
+    }
+    Ok(())
+}
 
-    //     pool.execute(move || {
-    //         let mut websocket = accept(stream.unwrap()).unwrap();
-    //         while let Ok(payload) = websocket.read_message() {
-    //             if payload.is_binary() || payload.is_text() {
-    //                 info!("======= Start =======");
-    //                 info!("message: {}", payload);
-    //                 websocket.write_message(Message::Text(String::from("received"))).unwrap();
-    //             }
-    //         }
-    //     })
-    // }
+
+async fn handle_connection(stream: TcpStream, state_lock: StateLock) {
+    let addr = stream.peer_addr().expect("connected streams should have a peer address");
+    info!("Peer address: {}", addr);
+
+    let ws_stream = tokio_tungstenite::accept_async(stream)
+        .await
+        .expect("Error during the websocket handshake occurred");
+
+    info!("New WebSocket connection: {}", addr);
+
+    let (_, read) = ws_stream.split();
+
+    let write_on_state = read.try_for_each(|msg| {
+        let response = msg.to_text().unwrap();
+        println!("Received a message from {}: {}", addr, response);
+
+        let block = Block::from(response);
+        if block.is_valid() {
+            debug!("block is valid!");
+            let mut state = state_lock.write().unwrap();
+            debug!("Got the lock");
+            match state.get(&block.id.clone()) {
+                Some(old_content) => {
+                if is_older_than(old_content.clone(), block.content.clone()) {
+                    let merged_content = merge(old_content.clone(), block.content);
+                    state.insert(block.id.clone(), merged_content);
+                    debug!("updated state")
+                }
+                }
+                None => {
+                    state.insert(block.id.clone(), block.content);
+                    debug!("new state registered")
+                }
+            }
+        }
+        debug!("lock RELEASED");
+        futures::future::ok(())
+    });
+
+    write_on_state.await.unwrap();
+    println!("{} disconnected", &addr);
 }
