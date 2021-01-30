@@ -94,8 +94,8 @@ fn concurrent_insert() {
         trace!("[{}] Got the lock", block.content["time"].clone());
         match state.get(&block.id.clone()) {
           Some(old_content) => {
-            if is_older_than(old_content.clone(), block.content.clone()) {
-              let merged_content = merge(old_content.clone(), block.content);
+            if is_older_than(&old_content, &block.content) {
+              let merged_content = merge(&old_content, &block.content);
               state.insert(block.id.clone(), merged_content);
             }
           }

@@ -36,7 +36,7 @@ fn content_merge_test() {
     }"#
   );
   let block = Block::from(original_state_str);
-  let result = merge(block.content.clone(), new_state);
+  let result = merge(&block.content, &new_state);
   assert_eq!(expected_state, result)
 }
 
@@ -113,5 +113,32 @@ fn is_older_than_test() {
     }"#;
   let block1 = Block::from(state1_str);
   let block2 = Block::from(state2_str);
-  assert_eq!(is_older_than(block1.content, block2.content), false);
+  assert_eq!(is_older_than(&block1.content, &block2.content), false);
+}
+
+#[test]
+fn same_time_value_test() {
+  let state1_str = r#"{
+      "id": "soiadj9087asdbnjk",
+      "content": {
+        "time": 30,
+        "hash": "2230o363glhhh64",
+        "generation": 243,
+        "display_name": "Uruk the big barbarian" 
+      }
+    }"#;
+  let state2_str = r#"{
+      "id": "soiadj9087asdbnjk",
+      "content": {
+        "time": 30,
+        "hash": "2230o363glhhh64",
+        "generation": 243,
+        "display_name": "Uruk the big barbarian" 
+      }
+    }"#;
+  let block1 = Block::from(state1_str);
+  let block2 = Block::from(state2_str);
+  // same time values should return true
+  assert_eq!(is_older_than(&block1.content, &block2.content), true);
+  assert_eq!(is_older_than(&block2.content, &block1.content), true);
 }

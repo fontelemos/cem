@@ -1,15 +1,12 @@
 use json_patch::merge as json_merge;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value};
 use std::collections::HashMap;
 
-fn convert(content: &str) -> Value {
-    json!(content)
-}
 
-pub fn merge(content: Value, patch: Value) -> Value {
+pub fn merge(content: &Value, patch: &Value) -> Value {
     let mut original_copy = content.clone();
-    json_merge(&mut original_copy, &patch);
+    json_merge(&mut original_copy, patch);
     original_copy
 }
 
@@ -17,7 +14,7 @@ pub fn build_state() -> HashMap<String, Value> {
     HashMap::new()
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 pub struct Block {
     pub id: String,
     pub content: Value
@@ -25,13 +22,8 @@ pub struct Block {
 
 impl From<&str> for Block {
     fn from(block_string: &str) -> Block {
-        let empty_block = Block { 
-            id: "" .to_string(),
-            content: convert("{}")
-        };
-        let block: Block = serde_json::from_str(block_string)
-            .unwrap_or(empty_block);
-        block
+        serde_json::from_str(block_string)
+            .unwrap_or(Block::default())
     }
 }
 
@@ -42,22 +34,15 @@ impl Block {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 struct TimeJson {
     time: u64
 }
-impl Default for TimeJson {
-    fn default() -> TimeJson {
-        TimeJson {
-            time: 0,
-        }
-    }
-}
 
-pub fn is_older_than(old: Value, new: Value) -> bool {
-    let old_time: TimeJson = serde_json::from_value(old)
+pub fn is_older_than(old: &Value, new: &Value) -> bool {
+    let old_time: TimeJson = serde_json::from_value(old.clone())
         .unwrap_or(TimeJson::default());
-    let new_time: TimeJson = serde_json::from_value(new)
+    let new_time: TimeJson = serde_json::from_value(new.clone())
         .unwrap_or(TimeJson::default());
     new_time.time >= old_time.time
 }
