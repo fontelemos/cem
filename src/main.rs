@@ -75,17 +75,23 @@ async fn handle_connection(stream: TcpStream, state_lock: StateLock, peer_map: P
                     debug!("new state registered");
                 }
             }
-            state.insert(updated_id, updated_content);
+            state.insert(updated_id.clone(), updated_content.clone());
             drop(state);
             debug!("state lock RELEASED");
+
             // broadcast state change
             let peers = peer_map.lock().unwrap();
             let broadcast_recipients = peers
                 .iter()
                 .filter(|(peer_addr, _)| peer_addr != &&addr)
                 .map(|(_, ws_sink)| ws_sink);
+            
+            let broadcast_msg: String = Block::default()
+                .update(updated_id, updated_content)
+                .to_json_string();
+
             for recp in broadcast_recipients {
-                recp.unbounded_send(msg.clone()).unwrap();
+                recp.unbounded_send(Message::from(broadcast_msg.clone())).unwrap();
             }
             debug!("DONE broadcasting");
         }

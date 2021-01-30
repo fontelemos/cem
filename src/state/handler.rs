@@ -32,6 +32,16 @@ impl Block {
         let invalid_id = String::from("");
         self.id != invalid_id
     }
+
+    pub fn update(&mut self, block_id: String, block_content: Value) -> &Block {
+        self.id = block_id;
+        self.content = block_content;
+        self
+    }
+
+    pub fn to_json_string(&self) -> String {
+        serde_json::to_string(self).unwrap_or("".to_string())
+    }
 }
 
 #[derive(Serialize, Deserialize, Default)]

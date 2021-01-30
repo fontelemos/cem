@@ -4,6 +4,7 @@ import debounce from "lodash.debounce";
 const socketConn = new WebSocket("ws://127.0.0.1:9001");
 
 const App = () => {
+  const DEBOUNCE_TIMER = 300;
   let [value, setvalue] = useState("");
 
   useEffect(() => {
@@ -13,6 +14,11 @@ const App = () => {
     socketConn.onmessage = (message) => {
       console.log("======MESSAGE RECEIVED======");
       console.log(message.data);
+      const payload = JSON.parse(message.data);
+      const newText = payload?.content?.text
+      if (newText !== null) {
+        setvalue(newText)
+      }
     };
   }, []);
 
@@ -28,10 +34,8 @@ const App = () => {
     socketConn.send(JSON.stringify(payload));
   };
 
-  const debouncedSendText = useCallback(
-    debounce((text) => sendText(text), 300),
-    []
-  );
+  //eslint-disable-next-line
+  const debouncedSendText = useCallback(debounce((text) => sendText(text), DEBOUNCE_TIMER),[]);
 
   const handleOnChange = (event) => {
     let text = event.target.value;
