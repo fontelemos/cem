@@ -59,6 +59,7 @@ version = "0.1.0"
 dependencies = [
  "env_logger",
  "futures",
+ "futures-channel",
  "futures-util",
  "json-patch",
  "log",
@@ -66,6 +67,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-tungstenite",
+ "tungstenite",
 ]
 
 [[package]]
