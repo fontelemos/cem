@@ -1,13 +1,20 @@
-use std::{io::Error, collections::HashMap};
+use std::{io::Error, collections::HashMap, net::SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
-use std::sync::{RwLock, Arc};
-use futures_util::{StreamExt, stream::TryStreamExt};
+use std::sync::{RwLock, Arc, Mutex};
+use futures_util::{StreamExt, stream::TryStreamExt, pin_mut};
+use futures_channel::mpsc::{unbounded, UnboundedSender};
+use tungstenite::protocol::Message;
 use serde_json::{Value};
 use log::{info, debug};
+
+
 use cem::helpers::{ init_log };
 use cem::state::handler::{build_state, is_older_than, merge, Block};
 
+
 type StateLock = Arc<RwLock<HashMap<String, Value>>>;
+type Tx = UnboundedSender<Message>;
+type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -19,15 +26,16 @@ async fn main() -> Result<(), Error> {
     info!("Listening on: {}", addr);
 
     let state_lock: StateLock = Arc::new(RwLock::new(build_state()));
+    let peer_map: PeerMap = PeerMap::new(Mutex::new(HashMap::new()));
 
     while let Ok((stream, _)) = listener.accept().await {
-        tokio::spawn(handle_connection(stream, state_lock.clone()));
+        tokio::spawn(handle_connection(stream, state_lock.clone(), peer_map.clone()));
     }
     Ok(())
 }
 
 
-async fn handle_connection(stream: TcpStream, state_lock: StateLock) {
+async fn handle_connection(stream: TcpStream, state_lock: StateLock, peer_map: PeerMap) {
     let addr = stream.peer_addr().expect("connected streams should have a peer address");
     info!("Peer address: {}", addr);
 
@@ -37,9 +45,12 @@ async fn handle_connection(stream: TcpStream, state_lock: StateLock) {
 
     info!("New WebSocket connection: {}", addr);
 
-    let (_, read) = ws_stream.split();
+    let (tx, rx) = unbounded();
+    peer_map.lock().unwrap().insert(addr, tx);
 
-    let write_on_state = read.try_for_each(|msg| {
+    let (outgoing, incoming) = ws_stream.split();
+
+    let write_and_broadcast = incoming.try_for_each(|msg| {
         let response = msg.to_text().unwrap();
         println!("Received a message from {}: {}", addr, response);
 
@@ -48,24 +59,43 @@ async fn handle_connection(stream: TcpStream, state_lock: StateLock) {
             debug!("block is valid!");
             let mut state = state_lock.write().unwrap();
             debug!("Got the lock");
-            match state.get(&block.id.clone()) {
+
+            let mut updated_content: Value = Value::default();
+            let updated_id: String = block.id;
+
+            match state.get(&updated_id) {
                 Some(old_content) => {
-                if is_older_than(&old_content, &block.content) {
-                    let merged_content = merge(&old_content, &block.content);
-                    state.insert(block.id.clone(), merged_content);
-                    debug!("updated state")
-                }
+                    if is_older_than(&old_content, &block.content) {
+                        updated_content = merge(&old_content, &block.content);
+                        debug!("updated state");
+                    }
                 }
                 None => {
-                    state.insert(block.id.clone(), block.content);
-                    debug!("new state registered")
+                    updated_content = block.content;
+                    debug!("new state registered");
                 }
             }
+            state.insert(updated_id, updated_content);
+            drop(state);
+            debug!("state lock RELEASED");
+            // broadcast state change
+            let peers = peer_map.lock().unwrap();
+            let broadcast_recipients = peers
+                .iter()
+                .filter(|(peer_addr, _)| peer_addr != &&addr)
+                .map(|(_, ws_sink)| ws_sink);
+            for recp in broadcast_recipients {
+                recp.unbounded_send(msg.clone()).unwrap();
+            }
+            debug!("DONE broadcasting");
         }
-        debug!("lock RELEASED");
         futures::future::ok(())
     });
 
-    write_on_state.await.unwrap();
+    let receive_from_others = rx.map(Ok).forward(outgoing);
+    pin_mut!(write_and_broadcast, receive_from_others);
+    futures::future::select(write_and_broadcast, receive_from_others).await;
+
     println!("{} disconnected", &addr);
+    peer_map.lock().unwrap().remove(&addr);
 }
