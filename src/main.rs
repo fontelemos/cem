@@ -1,17 +1,11 @@
-use std::{io::Error, collections::HashMap, net::SocketAddr};
+use std::{io::Error, collections::HashMap};
 use tokio::net::{TcpListener, TcpStream};
 use std::sync::{RwLock, Arc, Mutex};
 use futures::{StreamExt, stream::TryStreamExt, pin_mut};
-use futures::channel::mpsc::{unbounded, UnboundedSender};
-use tungstenite::protocol::Message;
-use serde_json::{Value};
+use futures::channel::mpsc::{unbounded};
 use log::{info};
-use cem::helpers::{ init_log, update_state_and_broadcast };
+use cem::helpers::{ init_log, update_state_and_broadcast, PeerMap, StateLock };
 use cem::state::handler::{build_state};
-
-type StateLock = Arc<RwLock<HashMap<String, Value>>>;
-type Tx = UnboundedSender<Message>;
-type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
 
 
 #[tokio::main]

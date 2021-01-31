@@ -8,9 +8,9 @@ use serde_json::{Value};
 use log::{debug};
 use crate::state::handler::{is_older_than, merge, Block};
 
-type StateLock = Arc<RwLock<HashMap<String, Value>>>;
+pub type StateLock = Arc<RwLock<HashMap<String, Value>>>;
 type Tx = UnboundedSender<Message>;
-type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
+pub type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
 
 
 pub fn init_log() {
@@ -37,11 +37,11 @@ pub fn apply_processing_rules(stored_content_option: Option<&Value>, received_co
     updated_content
 }
 
-fn start_broadcast(peer_map: &PeerMap, addr: SocketAddr, updated_block: &Block) {
+pub fn broadcast_to_peers(peer_map: &PeerMap, broadcaster_addr: SocketAddr, updated_block: &Block) {
     let peers = peer_map.lock().unwrap();
     let broadcast_recipients = peers
         .iter()
-        .filter(|(peer_addr, _)| peer_addr != &&addr)
+        .filter(|(peer_addr, _)| peer_addr != &&broadcaster_addr)
         .map(|(_, ws_sink)| ws_sink);
     
     let broadcast_msg: String = updated_block.to_json_string();
@@ -64,7 +64,7 @@ pub fn update_state_and_broadcast(response: &str, state_lock: &StateLock, peer_m
     state.insert(target_id, updated_content.clone());
 
     let updated_block = block.create_copy_with(updated_content);
-    start_broadcast(&peer_map, addr, &updated_block);
+    broadcast_to_peers(&peer_map, addr, &updated_block);
 
     Some(updated_block)
 }
