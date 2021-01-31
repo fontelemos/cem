@@ -20,21 +20,21 @@ pub fn init_log() {
     env_logger::init_from_env(log_env);
 }
 
-fn apply_processing_rules(stored_block_option: Option<&Value>, received_block: Block) -> Option<Block> {
-    let mut updated_block = None;
-    match stored_block_option {
+pub fn apply_processing_rules(stored_content_option: Option<&Value>, received_content: &Value) -> Option<Value> {
+    let mut updated_content = None;
+    match stored_content_option {
         Some(old_content) => {
-            if is_older_than(&old_content, &received_block.content) {
-                let merged_content = merge(&old_content, &received_block.content);
-                updated_block = Some(received_block.create_copy_with(merged_content));
+            if is_older_than(&old_content, received_content) {
+                let merged_content = merge(&old_content, received_content);
+                updated_content =  Some(merged_content)
             }
         }
         None => {
-            updated_block = Some(received_block.clone());
+            updated_content = Some(received_content.clone());
         }
     }
     debug!("DONE processing");
-    updated_block
+    updated_content
 }
 
 fn start_broadcast(peer_map: &PeerMap, addr: SocketAddr, updated_block: &Block) {
@@ -52,16 +52,19 @@ fn start_broadcast(peer_map: &PeerMap, addr: SocketAddr, updated_block: &Block) 
     debug!("DONE broadcasting");
 }
 
-pub fn update_state_and_broadcast(response: &str, state_lock: &StateLock, peer_map: &PeerMap, addr: SocketAddr) {
-    if let Some(block) = Block::convert(response) {
-        let target_id: String = block.id.clone();
+pub fn update_state_and_broadcast(response: &str, state_lock: &StateLock, peer_map: &PeerMap, addr: SocketAddr) -> Option<Block> {
+    let block = Block::convert(response)?;
+    let target_id: String = block.id.clone();
 
-        let mut state = state_lock.write().unwrap();
-        let stored_block_option = state.get(&target_id);
+    let mut state = state_lock.write().unwrap();
+    let stored_content_option = state.get(&target_id);
 
-        if let Some(updated_block) = apply_processing_rules(stored_block_option, block) {
-            state.insert(target_id, updated_block.content.clone());
-            start_broadcast(&peer_map, addr, &updated_block);
-        }
-    }
+    let updated_content = apply_processing_rules(stored_content_option, &block.content)?;
+
+    state.insert(target_id, updated_content.clone());
+
+    let updated_block = block.create_copy_with(updated_content);
+    start_broadcast(&peer_map, addr, &updated_block);
+
+    Some(updated_block)
 }
