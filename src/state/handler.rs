@@ -14,29 +14,19 @@ pub fn build_state() -> HashMap<String, Value> {
     HashMap::new()
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Clone, Debug)]
 pub struct Block {
     pub id: String,
     pub content: Value
 }
 
-impl From<&str> for Block {
-    fn from(block_string: &str) -> Block {
-        serde_json::from_str(block_string)
-            .unwrap_or(Block::default())
-    }
-}
-
 impl Block {
-    pub fn is_valid(&self) -> bool {
-        let invalid_id = String::from("");
-        self.id != invalid_id
+    pub fn convert(block_string: &str) -> Option<Block> {
+        serde_json::from_str(block_string).ok()
     }
 
-    pub fn update(&mut self, block_id: String, block_content: Value) -> &Block {
-        self.id = block_id;
-        self.content = block_content;
-        self
+    pub fn create_copy_with(&self, new_content: Value) -> Block {
+        Block{id: self.id.clone(), content: new_content}
     }
 
     pub fn to_json_string(&self) -> String {

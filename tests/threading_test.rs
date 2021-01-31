@@ -89,7 +89,7 @@ fn concurrent_insert() {
       let current_counter_lock = counter_lock.clone();
 
       handles.push(tokio::spawn(async move {
-        let block = Block::from(response);
+        let block = Block::convert(response).unwrap();
         let mut state = current_state_lock.write().unwrap();
         trace!("[{}] Got the lock", block.content["time"].clone());
         match state.get(&block.id.clone()) {
@@ -113,7 +113,7 @@ fn concurrent_insert() {
     let counter = counter_lock.lock().unwrap();
 
     let content = current_state.get("soiadj9087asdbnjk").unwrap();
-    let expected_block = Block::from(build_expected_content());
+    let expected_block = Block::convert(build_expected_content()).unwrap();
 
     info!("tokio processing took: {} ms", now.elapsed().as_millis());
     info!("{} items processed", *counter);

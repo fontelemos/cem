@@ -1,22 +1,18 @@
 use std::{io::Error, collections::HashMap, net::SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
 use std::sync::{RwLock, Arc, Mutex};
-//use futures_util::{StreamExt, stream::TryStreamExt, pin_mut};
-// use futures_channel::mpsc::{unbounded, UnboundedSender};
 use futures::{StreamExt, stream::TryStreamExt, pin_mut};
 use futures::channel::mpsc::{unbounded, UnboundedSender};
 use tungstenite::protocol::Message;
 use serde_json::{Value};
-use log::{info, debug};
-
-
-use cem::helpers::{ init_log };
-use cem::state::handler::{build_state, is_older_than, merge, Block};
-
+use log::{info};
+use cem::helpers::{ init_log, update_state_and_broadcast };
+use cem::state::handler::{build_state};
 
 type StateLock = Arc<RwLock<HashMap<String, Value>>>;
 type Tx = UnboundedSender<Message>;
 type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
+
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -35,7 +31,6 @@ async fn main() -> Result<(), Error> {
     }
     Ok(())
 }
-
 
 async fn handle_connection(stream: TcpStream, state_lock: StateLock, peer_map: PeerMap) {
     let addr = stream.peer_addr().expect("connected streams should have a peer address");
@@ -56,47 +51,8 @@ async fn handle_connection(stream: TcpStream, state_lock: StateLock, peer_map: P
         let response = msg.to_text().unwrap();
         println!("Received a message from {}: {}", addr, response);
 
-        let block = Block::from(response);
-        if block.is_valid() {
-            debug!("block is valid!");
-            let mut state = state_lock.write().unwrap();
-            debug!("Got the lock");
+        update_state_and_broadcast(response, &state_lock, &peer_map, addr);
 
-            let mut updated_content: Value = Value::default();
-            let updated_id: String = block.id;
-
-            match state.get(&updated_id) {
-                Some(old_content) => {
-                    if is_older_than(&old_content, &block.content) {
-                        updated_content = merge(&old_content, &block.content);
-                        debug!("updated state");
-                    }
-                }
-                None => {
-                    updated_content = block.content;
-                    debug!("new state registered");
-                }
-            }
-            state.insert(updated_id.clone(), updated_content.clone());
-            drop(state);
-            debug!("state lock RELEASED");
-
-            // broadcast state change
-            let peers = peer_map.lock().unwrap();
-            let broadcast_recipients = peers
-                .iter()
-                .filter(|(peer_addr, _)| peer_addr != &&addr)
-                .map(|(_, ws_sink)| ws_sink);
-            
-            let broadcast_msg: String = Block::default()
-                .update(updated_id, updated_content)
-                .to_json_string();
-
-            for recp in broadcast_recipients {
-                recp.unbounded_send(Message::from(broadcast_msg.clone())).unwrap();
-            }
-            debug!("DONE broadcasting");
-        }
         futures::future::ok(())
     });
 

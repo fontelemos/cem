@@ -35,7 +35,7 @@ fn content_merge_test() {
       }
     }"#
   );
-  let block = Block::from(original_state_str);
+  let block = Block::convert(original_state_str).unwrap();
   let result = merge(&block.content, &new_state);
   assert_eq!(expected_state, result)
 }
@@ -51,15 +51,14 @@ fn receive_and_store_state() {
       }
     }"#;
   let mut state = build_state();
-  let block = Block::from(original_state_str);
-  assert!(block.is_valid());
+  let block = Block::convert(original_state_str).unwrap();
   assert_eq!(state.insert(block.id.clone(), block.content.clone()), None);
   let expected_id: String = String::from("soiadj9087asdbnjk");
   assert_eq!(block.id, expected_id);
 }
 
 #[test]
-fn invalid_state() {
+fn invalid_states() {
   let state1_str = r#"{
       "id": "soiadj9087asdbnjk",
       "contento": {
@@ -83,12 +82,12 @@ fn invalid_state() {
         "display_name": "Uruk the big barbarian" 
       }
     }"#;
-  let block1 = Block::from(state1_str);
-  let block2 = Block::from(state2_str);
-  let block3 = Block::from(state3_str);
-  assert_eq!(block1.is_valid(), false);
-  assert_eq!(block2.is_valid(), false);
-  assert_eq!(block3.is_valid(), false);
+  let block1: Option<Block> = Block::convert(state1_str);
+  let block2: Option<Block> = Block::convert(state2_str);
+  let block3: Option<Block> = Block::convert(state3_str);
+  assert_eq!(block1.is_none(), true); // typo = invalid
+  assert_eq!(block2.is_none(), true); // no id = invalid
+  assert_eq!(block3.is_none(), false); // empty id = valid
 }
 
 #[test]
@@ -111,8 +110,8 @@ fn is_older_than_test() {
         "display_name": "Uruk the big barbarian" 
       }
     }"#;
-  let block1 = Block::from(state1_str);
-  let block2 = Block::from(state2_str);
+  let block1 = Block::convert(state1_str).unwrap();
+  let block2 = Block::convert(state2_str).unwrap();
   assert_eq!(is_older_than(&block1.content, &block2.content), false);
 }
 
@@ -136,8 +135,8 @@ fn same_time_value_test() {
         "display_name": "Uruk the big barbarian" 
       }
     }"#;
-  let block1 = Block::from(state1_str);
-  let block2 = Block::from(state2_str);
+  let block1 = Block::convert(state1_str).unwrap();
+  let block2 = Block::convert(state2_str).unwrap();
   // same time values should return true
   assert_eq!(is_older_than(&block1.content, &block2.content), true);
   assert_eq!(is_older_than(&block2.content, &block1.content), true);
