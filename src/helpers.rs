@@ -1,17 +1,15 @@
-use env_logger::Env;
-
-use std::{collections::HashMap, net::SocketAddr};
-use std::sync::{RwLock, Arc, Mutex};
-use futures::channel::mpsc::{UnboundedSender};
-use tungstenite::protocol::Message;
-use serde_json::{Value};
-use log::{debug};
 use crate::state::handler::{is_older_than, merge, Block};
+use env_logger::Env;
+use futures::channel::mpsc::UnboundedSender;
+use log::debug;
+use serde_json::Value;
+use std::sync::{Arc, Mutex, RwLock};
+use std::{collections::HashMap, net::SocketAddr};
+use tungstenite::protocol::Message;
 
 pub type StateLock = Arc<RwLock<HashMap<String, Value>>>;
 type Tx = UnboundedSender<Message>;
 pub type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
-
 
 pub fn init_log() {
     let log_env = Env::default()
@@ -26,28 +24,30 @@ pub fn generate_state_snapshot(state_lock: &StateLock) -> Option<String> {
         .read()
         .unwrap()
         .iter()
-        .map(|(key, value)| Block{id: key.clone(), content: value.clone()})
+        .map(|(key, value)| Block {
+            id: key.clone(),
+            content: value.clone(),
+        })
         .fold(vec![], |mut acc, block| {
             acc.push(block);
             acc
         });
-        let state_snapshot = serde_json::to_string(&state_snapshot_vec).ok()?;
-        debug!("snapshot:{}", state_snapshot);
-        Some(state_snapshot)
-        
+    let state_snapshot = serde_json::to_string(&state_snapshot_vec).ok()?;
+    debug!("snapshot:{}", state_snapshot);
+    Some(state_snapshot)
 }
 
-pub fn apply_processing_rules(stored_content_option: Option<&Value>, received_content: &Value) -> Option<Value> {
+pub fn apply_processing_rules(stored: Option<&Value>, received: &Value) -> Option<Value> {
     let mut updated_content = None;
-    match stored_content_option {
+    match stored {
         Some(old_content) => {
-            if is_older_than(&old_content, received_content) {
-                let merged_content = merge(&old_content, received_content);
-                updated_content =  Some(merged_content)
+            if is_older_than(&old_content, received) {
+                let merged_content = merge(&old_content, received);
+                updated_content = Some(merged_content)
             }
         }
         None => {
-            updated_content = Some(received_content.clone());
+            updated_content = Some(received.clone());
         }
     }
     debug!("DONE processing");
@@ -60,16 +60,21 @@ pub fn broadcast_to_peers(peer_map: &PeerMap, broadcaster_addr: SocketAddr, upda
         .iter()
         .filter(|(peer_addr, _)| peer_addr != &&broadcaster_addr)
         .map(|(_, ws_sink)| ws_sink);
-    
     let broadcast_msg: String = updated_block.to_json_string();
 
     for recp in broadcast_recipients {
-        recp.unbounded_send(Message::from(broadcast_msg.clone())).unwrap();
+        recp.unbounded_send(Message::from(broadcast_msg.clone()))
+            .unwrap();
     }
     debug!("DONE broadcasting");
 }
 
-pub fn update_state_and_broadcast(response: &str, state_lock: &StateLock, peer_map: &PeerMap, addr: SocketAddr) -> Option<Block> {
+pub fn update_state_and_broadcast(
+    response: &str,
+    state_lock: &StateLock,
+    peer_map: &PeerMap,
+    addr: SocketAddr,
+) -> Option<Block> {
     let block = Block::convert(response)?;
     let target_id: String = block.id.clone();
 

@@ -1,5 +1,5 @@
 #[cfg(test)]
-use cem::state::handler::{build_state, merge, is_older_than, Block};
+use cem::state::handler::{build_state, is_older_than, merge, Block};
 use serde_json::json;
 
 #[test]

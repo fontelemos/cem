@@ -1,13 +1,14 @@
-use std::{io::Error, collections::HashMap};
+use cem::helpers::{
+    generate_state_snapshot, init_log, update_state_and_broadcast, PeerMap, StateLock,
+};
+use cem::state::handler::build_state;
+use futures::channel::mpsc::unbounded;
+use futures::{pin_mut, sink::SinkExt, stream::TryStreamExt, StreamExt};
+use log::info;
+use std::sync::{Arc, Mutex, RwLock};
+use std::{collections::HashMap, io::Error};
 use tokio::net::{TcpListener, TcpStream};
-use std::sync::{RwLock, Arc, Mutex};
-use futures::{StreamExt, stream::TryStreamExt, sink::SinkExt, pin_mut};
-use futures::channel::mpsc::{unbounded};
 use tungstenite::protocol::Message;
-use log::{info};
-use cem::helpers::{ init_log, generate_state_snapshot, update_state_and_broadcast, PeerMap, StateLock };
-use cem::state::handler::{build_state};
-
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -22,13 +23,19 @@ async fn main() -> Result<(), Error> {
     let peer_map: PeerMap = PeerMap::new(Mutex::new(HashMap::new()));
 
     while let Ok((stream, _)) = listener.accept().await {
-        tokio::spawn(handle_connection(stream, state_lock.clone(), peer_map.clone()));
+        tokio::spawn(handle_connection(
+            stream,
+            state_lock.clone(),
+            peer_map.clone(),
+        ));
     }
     Ok(())
 }
 
 async fn handle_connection(stream: TcpStream, state_lock: StateLock, peer_map: PeerMap) {
-    let addr = stream.peer_addr().expect("connected streams should have a peer address");
+    let addr = stream
+        .peer_addr()
+        .expect("connected streams should have a peer address");
     info!("Peer address: {}", addr);
 
     let ws_stream = tokio_tungstenite::accept_async(stream)
@@ -36,15 +43,12 @@ async fn handle_connection(stream: TcpStream, state_lock: StateLock, peer_map: P
         .expect("Error during the websocket handshake occurred");
 
     info!("New WebSocket connection: {}", addr);
-    
     let (tx, rx) = unbounded();
     peer_map.lock().unwrap().insert(addr, tx.clone());
-    
     let (mut outgoing, incoming) = ws_stream.split();
-    
     // FIXME: if the state is corrupted, the program should shutdown!
     // (and save the state in a file too maybe?)
-    let state_snapshot = generate_state_snapshot(&state_lock).unwrap(); 
+    let state_snapshot = generate_state_snapshot(&state_lock).unwrap();
     outgoing.send(Message::from(state_snapshot)).await.unwrap();
 
     let write_and_broadcast = incoming.try_for_each(|msg| {

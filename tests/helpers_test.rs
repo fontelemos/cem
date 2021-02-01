@@ -1,21 +1,23 @@
 #[cfg(test)]
-
+use cem::helpers::{apply_processing_rules, broadcast_to_peers, PeerMap};
+use cem::state::handler::Block;
+use futures::channel::mpsc::unbounded;
+use serde_json::Value;
+use std::sync::Mutex;
 use std::{collections::HashMap, net::SocketAddr};
-use std::sync::{Mutex};
-use cem::helpers::{ apply_processing_rules, broadcast_to_peers, PeerMap };
-use cem::state::handler::{ Block };
-use serde_json::{Value};
-use futures::channel::mpsc::{unbounded};
 use tungstenite::protocol::Message;
 
 fn build_generic_block(time: u64) -> String {
-    format!(r#"{{
+    format!(
+        r#"{{
         "id": "abcd1234",
         "content": {{
             "time": {},
             "text": "hello world!" 
         }}
-      }}"#, time)
+      }}"#,
+        time
+    )
 }
 
 #[test]
@@ -52,9 +54,8 @@ fn processing_rules_should_return_received_if_received_is_newer() {
 async fn broadcast_to_peers_is_broadcasting() {
     let dummy_msg = "dummy!!!!";
     let error_msg = "I did not receive the broadcast :(";
- 
     let block: Block = Block::convert(&build_generic_block(3000)).unwrap();
-    let addr1: SocketAddr  = "127.0.0.1:8080".parse().unwrap();
+    let addr1: SocketAddr = "127.0.0.1:8080".parse().unwrap();
     let addr2: SocketAddr = "127.0.0.1:7777".parse().unwrap();
 
     let peer_map: PeerMap = PeerMap::new(Mutex::new(HashMap::new()));
