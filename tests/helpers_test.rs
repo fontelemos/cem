@@ -1,28 +1,28 @@
 #[cfg(test)]
-use cem::helpers::{apply_processing_rules, broadcast_to_peers, PeerMap};
-use cem::state::handler::Block;
+use cem::helpers::{apply_processing_rules, broadcast_to_peers, generate_state_snapshot, PeerMap, StateLock};
+use cem::state::handler::{build_state, Block};
 use futures::channel::mpsc::unbounded;
 use serde_json::Value;
-use std::sync::Mutex;
+use std::sync::{Mutex, Arc, RwLock};
 use std::{collections::HashMap, net::SocketAddr};
 use tungstenite::protocol::Message;
 
-fn build_generic_block(time: u64) -> String {
+fn build_generic_block(id: &str, time: u64) -> String {
     format!(
         r#"{{
-        "id": "abcd1234",
+        "id": "{}",
         "content": {{
             "time": {},
             "text": "hello world!" 
         }}
       }}"#,
-        time
+      id, time
     )
 }
 
 #[test]
 fn processing_rules_should_return_same_if_none_stored() {
-    let received_block: Block = Block::convert(&build_generic_block(3000)).unwrap();
+    let received_block: Block = Block::convert(&build_generic_block("mykey", 3000)).unwrap();
     let stored_content: Option<&Value> = None;
     let result_content = apply_processing_rules(stored_content, &received_block.content).unwrap();
     assert_eq!(result_content, received_block.content);
@@ -30,9 +30,9 @@ fn processing_rules_should_return_same_if_none_stored() {
 
 #[test]
 fn processing_rules_should_return_none_if_received_is_older() {
-    let received_block: Block = Block::convert(&build_generic_block(1000)).unwrap();
+    let received_block: Block = Block::convert(&build_generic_block("mykey", 1000)).unwrap();
 
-    let expected_block = Block::convert(&build_generic_block(3000)).unwrap();
+    let expected_block = Block::convert(&build_generic_block("mykey", 3000)).unwrap();
     let stored_content: Option<&Value> = Some(&expected_block.content);
 
     let result_content = apply_processing_rules(stored_content, &received_block.content);
@@ -41,9 +41,9 @@ fn processing_rules_should_return_none_if_received_is_older() {
 
 #[test]
 fn processing_rules_should_return_received_if_received_is_newer() {
-    let received_block: Block = Block::convert(&build_generic_block(7000)).unwrap();
+    let received_block: Block = Block::convert(&build_generic_block("mykey", 7000)).unwrap();
 
-    let expected_block = Block::convert(&build_generic_block(3000)).unwrap();
+    let expected_block = Block::convert(&build_generic_block("mykey", 3000)).unwrap();
     let stored_content: Option<&Value> = Some(&expected_block.content);
 
     let result_content = apply_processing_rules(stored_content, &received_block.content).unwrap();
@@ -54,7 +54,7 @@ fn processing_rules_should_return_received_if_received_is_newer() {
 async fn broadcast_to_peers_is_broadcasting() {
     let dummy_msg = "dummy!!!!";
     let error_msg = "I did not receive the broadcast :(";
-    let block: Block = Block::convert(&build_generic_block(3000)).unwrap();
+    let block: Block = Block::convert(&build_generic_block("mykey", 3000)).unwrap();
     let addr1: SocketAddr = "127.0.0.1:8080".parse().unwrap();
     let addr2: SocketAddr = "127.0.0.1:7777".parse().unwrap();
 
@@ -77,4 +77,59 @@ async fn broadcast_to_peers_is_broadcasting() {
 
     assert_eq!(received_by_addr1.to_string(), dummy_msg.to_string());
     assert_eq!(received_by_addr2.to_string(), block.to_json_string());
+}
+
+
+#[test]
+fn generate_state_snapshot_with_1_block_test() {
+    let state_lock: StateLock = Arc::new(RwLock::new(build_state()));
+    let block1 = Block::convert(&build_generic_block("myid", 12)).unwrap();
+    
+    let expected_snapshot = serde_json::to_string(&vec![block1.clone()]).unwrap();
+    
+    let mut state = state_lock.write().unwrap();
+    state.insert(block1.id, block1.content);
+    drop(state);
+
+    let snapshot = generate_state_snapshot(&state_lock).unwrap();
+    assert_eq!(snapshot, expected_snapshot);
+}
+
+#[test]
+fn generate_state_snapshot_multiple_blocks_test() {
+    let state_lock: StateLock = Arc::new(RwLock::new(build_state()));
+    let block1 = Block::convert(&build_generic_block("aid", 1)).unwrap();
+    let block2 = Block::convert(&build_generic_block("baid", 2)).unwrap();
+    let block3 = Block::convert(&build_generic_block("caid", 3)).unwrap();
+    
+    let mut expected_snapshot: Vec<Block>= vec![block1.clone(), block2.clone(), block3.clone()];
+    
+    let mut state = state_lock.write().unwrap();
+    state.insert(block1.id, block1.content);
+    state.insert(block2.id, block2.content);
+    state.insert(block3.id, block3.content);
+    drop(state);
+
+    let mut snapshot: Vec<Block> = serde_json::from_str(&generate_state_snapshot(&state_lock).unwrap()).unwrap();
+
+    expected_snapshot.sort_by(|b1, b2| {
+        let time1: i32 = serde_json::from_value(b1.content["time"].clone()).unwrap();
+        let time2: i32 = serde_json::from_value(b2.content["time"].clone()).unwrap();
+        time1.cmp(&time2)
+    });
+
+    snapshot.sort_by(|b1, b2| {
+        let time1: i32 = serde_json::from_value(b1.content["time"].clone()).unwrap();
+        let time2: i32 = serde_json::from_value(b2.content["time"].clone()).unwrap();
+        time1.cmp(&time2)
+    });
+
+    let result: usize = snapshot
+        .iter()
+        .zip(expected_snapshot.iter())
+        .filter(|(block, expected)| block.id != expected.id)
+        .collect::<Vec<(&Block, &Block)>>()
+        .len();
+
+    assert_eq!(result, 0);
 }

@@ -18,7 +18,6 @@ pub fn init_log() {
     env_logger::init_from_env(log_env);
 }
 
-//TODO: add tests
 pub fn generate_state_snapshot(state_lock: &StateLock) -> Option<String> {
     let state_snapshot_vec = state_lock
         .read()
