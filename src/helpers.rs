@@ -20,6 +20,23 @@ pub fn init_log() {
     env_logger::init_from_env(log_env);
 }
 
+//TODO: add tests
+pub fn generate_state_snapshot(state_lock: &StateLock) -> Option<String> {
+    let state_snapshot_vec = state_lock
+        .read()
+        .unwrap()
+        .iter()
+        .map(|(key, value)| Block{id: key.clone(), content: value.clone()})
+        .fold(vec![], |mut acc, block| {
+            acc.push(block);
+            acc
+        });
+        let state_snapshot = serde_json::to_string(&state_snapshot_vec).ok()?;
+        debug!("snapshot:{}", state_snapshot);
+        Some(state_snapshot)
+        
+}
+
 pub fn apply_processing_rules(stored_content_option: Option<&Value>, received_content: &Value) -> Option<Value> {
     let mut updated_content = None;
     match stored_content_option {

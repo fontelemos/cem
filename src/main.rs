@@ -1,10 +1,11 @@
 use std::{io::Error, collections::HashMap};
 use tokio::net::{TcpListener, TcpStream};
 use std::sync::{RwLock, Arc, Mutex};
-use futures::{StreamExt, stream::TryStreamExt, pin_mut};
+use futures::{StreamExt, stream::TryStreamExt, sink::SinkExt, pin_mut};
 use futures::channel::mpsc::{unbounded};
+use tungstenite::protocol::Message;
 use log::{info};
-use cem::helpers::{ init_log, update_state_and_broadcast, PeerMap, StateLock };
+use cem::helpers::{ init_log, generate_state_snapshot, update_state_and_broadcast, PeerMap, StateLock };
 use cem::state::handler::{build_state};
 
 
@@ -35,11 +36,16 @@ async fn handle_connection(stream: TcpStream, state_lock: StateLock, peer_map: P
         .expect("Error during the websocket handshake occurred");
 
     info!("New WebSocket connection: {}", addr);
-
+    
     let (tx, rx) = unbounded();
-    peer_map.lock().unwrap().insert(addr, tx);
-
-    let (outgoing, incoming) = ws_stream.split();
+    peer_map.lock().unwrap().insert(addr, tx.clone());
+    
+    let (mut outgoing, incoming) = ws_stream.split();
+    
+    // FIXME: if the state is corrupted, the program should shutdown!
+    // (and save the state in a file too maybe?)
+    let state_snapshot = generate_state_snapshot(&state_lock).unwrap(); 
+    outgoing.send(Message::from(state_snapshot)).await.unwrap();
 
     let write_and_broadcast = incoming.try_for_each(|msg| {
         let response = msg.to_text().unwrap();
