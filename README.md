@@ -1,5 +1,7 @@
 # Concurrent editing manager (CEM)
 
+[![Actions Status](https://github.com/Leinvedan/cem/workflows/Rust/badge.svg)](https://github.com/Leinvedan/cem/actions)
+
 ## Table of contents
 
 1. [About](#about)
