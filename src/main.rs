@@ -4,7 +4,7 @@ use cem::helpers::{
 use cem::state::handler::build_state;
 use futures::channel::mpsc::unbounded;
 use futures::{pin_mut, sink::SinkExt, stream::TryStreamExt, StreamExt};
-use log::info;
+use log::{error, trace, info};
 use std::sync::{Arc, Mutex, RwLock};
 use std::{collections::HashMap, io::Error};
 use tokio::net::{TcpListener, TcpStream};
@@ -43,27 +43,30 @@ async fn handle_connection(stream: TcpStream, state_lock: StateLock, peer_map: P
         .expect("Error during the websocket handshake occurred");
 
     info!("New WebSocket connection: {}", addr);
-    let (tx, rx) = unbounded();
-    peer_map.lock().unwrap().insert(addr, tx.clone());
-    let (mut outgoing, incoming) = ws_stream.split();
-    // FIXME: if the state is corrupted, the program should shutdown!
-    // (and save the state in a file too maybe?)
-    let state_snapshot = generate_state_snapshot(&state_lock).unwrap();
-    outgoing.send(Message::from(state_snapshot)).await.unwrap();
+    if let Some(state_snapshot) = generate_state_snapshot(&state_lock) {
+        let (mut outgoing, incoming) = ws_stream.split();
+        outgoing.send(Message::from(state_snapshot)).await.unwrap();
+        trace!("snapshot sent to {}", addr);
 
-    let write_and_broadcast = incoming.try_for_each(|msg| {
-        let response = msg.to_text().unwrap();
-        println!("Received a message from {}: {}", addr, response);
+        let (tx, rx) = unbounded();
+        peer_map.lock().unwrap().insert(addr, tx.clone());
 
-        update_state_and_broadcast(response, &state_lock, &peer_map, addr);
+        let write_and_broadcast = incoming.try_for_each(|msg| {
+            let response = msg.to_text().unwrap();
+            println!("Received a message from {}: {}", addr, response);
+            update_state_and_broadcast(response, &state_lock, &peer_map, addr);
+            futures::future::ok(())
+        });
 
-        futures::future::ok(())
-    });
+        let receive_from_others = rx.map(Ok).forward(outgoing);
+        pin_mut!(write_and_broadcast, receive_from_others);
+        futures::future::select(write_and_broadcast, receive_from_others).await;
 
-    let receive_from_others = rx.map(Ok).forward(outgoing);
-    pin_mut!(write_and_broadcast, receive_from_others);
-    futures::future::select(write_and_broadcast, receive_from_others).await;
+        peer_map.lock().unwrap().remove(&addr);
+    } else {
+        error!("couldn't build state snapshot! State is corrupted!");
+        error!("corrupted state: {:?}", state_lock.read().unwrap());
+    }
 
     println!("{} disconnected", &addr);
-    peer_map.lock().unwrap().remove(&addr);
 }
