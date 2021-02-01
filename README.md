@@ -1,4 +1,4 @@
-# Concurrent editing manager (CEM)
+# Concurrent editing manager (CEM) [:hammer: WORK IN PROGRESS :hammer:]
 
 [![Actions Status](https://github.com/Leinvedan/cem/workflows/Rust/badge.svg)](https://github.com/Leinvedan/cem/actions)
 
@@ -7,6 +7,8 @@
 1. [About](#about)
 1. [API Interface](#api-interface)
 2. [Webpage example](#running-webpage-example)
+3. [License](#license)
+4. [Contribution](#contribution)
 
 ## About
 
@@ -50,3 +52,11 @@ After processing the message, CEM will broadcast to all connected users(except w
 
 1. Start the API by running `cargo run` in the root of the project
 2. in another terminal window, access the webpage directory and run `npm start`
+
+## License
+
+This project is licensed under the [MIT license](https://github.com/Leinvedan/cem/blob/master/LICENSE).
+
+## Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in CEM by you, shall be licensed as MIT, without any additional terms or conditions.
