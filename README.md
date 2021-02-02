@@ -6,7 +6,7 @@
 
 1. [About](#about)
 1. [API Interface](#api-interface)
-2. [Webpage example](#running-webpage-example)
+2. [Webpage example](#webpage-example)
 3. [License](#license)
 4. [Contribution](#contribution)
 
