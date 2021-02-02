@@ -1,34 +1,24 @@
-import React, { useState, useCallback, useEffect } from "react";
-import debounce from "lodash.debounce";
+import React, { useState, useEffect } from "react";
+import { updateGlobalState, updateBlock } from "./utils";
+import RealTimeField from "./RealTimeField";
 
 const socketConn = new WebSocket("ws://127.0.0.1:9001");
 
-const updateBlock = (payload, callback) => {
-  const newText = payload?.content?.text;
-  if (newText) {
-    console.log("Updating block!");
-    callback(newText);
-  }
-};
-
-const updateGlobalState = (payloadArray, callbackList) => {
-  callbackList.forEach(({ callbackId, callback }) => {
-    payloadArray.forEach(({ id, content }) => {
-      if (id === callbackId) {
-        callback(content?.text)
-        console.log("updated:", id);
-      };
-    });
-  });
-};
-
 const App = () => {
-  const DEBOUNCE_TIMER = 300;
-  const BLOCK_ID = "129837ab890qlc8";
+  let id1 = "field_1";
+  let [value1, setvalue1] = useState("");
 
-  let [value, setvalue] = useState("");
+  let id2 = "field_2";
+  let [value2, setvalue2] = useState("");
 
-  const callbackList = [{ callbackId: BLOCK_ID, callback: setvalue }]
+  let id3 = "field_3";
+  let [value3, setvalue3] = useState("");
+
+  const callbackList = [
+    { callbackId: id1, callback: setvalue1 },
+    { callbackId: id2, callback: setvalue2 },
+    { callbackId: id3, callback: setvalue3 },
+  ];
 
   useEffect(() => {
     socketConn.onopen = () => {
@@ -40,40 +30,49 @@ const App = () => {
       const payload = JSON.parse(message.data);
       Array.isArray(payload)
         ? updateGlobalState(payload, callbackList)
-        : updateBlock(payload, setvalue);
+        : updateBlock(payload, callbackList);
     };
-  }, []);
-
-  const sendText = (text) => {
-    let payload = {
-      id: BLOCK_ID,
-      content: {
-        time: `${Date.now()}`,
-        text: `${text}`,
-      },
-    };
-    console.log("====== Sending message ======");
-    socketConn.send(JSON.stringify(payload));
-  };
-
-  //eslint-disable-next-line
-  const debouncedSendText = useCallback(
-    debounce((text) => sendText(text), DEBOUNCE_TIMER),
-    []
-  );
-
-  const handleOnChange = (event) => {
-    let text = event.target.value;
-    setvalue(text);
-    debouncedSendText(text);
-  };
+  });
 
   return (
     <>
       <header className="header">
         <p>WELCOME TO THE CEM WEBPAGE!</p>
       </header>
-      <input type="text" value={value} onChange={handleOnChange}></input>
+      <RealTimeField
+        socketConn={socketConn}
+        fieldId={id1}
+        value={value1}
+        setValue={setvalue1}
+      />
+      <RealTimeField
+        socketConn={socketConn}
+        fieldId={id2}
+        value={value2}
+        setValue={setvalue2}
+      />
+      <div
+        style={{ width: "100%", height: "2px", backgroundColor: "purple" }}
+      ></div>
+      <span> Same source inputs </span>
+      <RealTimeField
+        socketConn={socketConn}
+        fieldId={id3}
+        value={value3}
+        setValue={setvalue3}
+      />
+      <RealTimeField
+        socketConn={socketConn}
+        fieldId={id3}
+        value={value3}
+        setValue={setvalue3}
+      />
+      <RealTimeField
+        socketConn={socketConn}
+        fieldId={id3}
+        value={value3}
+        setValue={setvalue3}
+      />
       <footer>
         <p>Nothing to see down here</p>
       </footer>
