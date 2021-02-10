@@ -1,22 +1,31 @@
-const updateBlock = (payload, callbackList) => {
+const updateBlock = (payload, blocks, buildNewBlock) => {
   const id = payload?.id;
   const newText = payload?.content?.text;
-  const callback = callbackList.find((element) => element.callbackId === id)?.callback;
-  if (callback) {
-    console.log("Received new block from friend!!");
-    callback(newText);
+  const storedContent = blocks[id];
+
+  if (storedContent) {
+    console.log("Updated old block!");
+    return {
+      [id]: {
+        ...storedContent,
+        value: newText,
+      },
+    };
   }
+  console.log("Received new block from friend!!");
+  return buildNewBlock(id, newText);
 };
 
-const updateGlobalState = (payloadArray, callbackList) => {
-  callbackList.forEach(({ callbackId, callback }) => {
-    payloadArray.forEach(({ id, content }) => {
-      if (id === callbackId) {
-        callback(content?.text);
-        console.log("updated:", id);
-      }
-    });
+const updateBlockList = (payloadArray, blocks, buildNewBlock) => {
+  let newBlockstate = {};
+  payloadArray.forEach((payload) => {
+    let newBlock = updateBlock(payload, blocks, buildNewBlock);
+    newBlockstate = {
+      ...newBlockstate,
+      ...newBlock,
+    };
   });
+  return newBlockstate;
 };
 
-export { updateBlock, updateGlobalState };
+export { updateBlock, updateBlockList };

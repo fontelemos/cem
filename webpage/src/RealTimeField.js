@@ -1,17 +1,18 @@
 import React, { useCallback } from "react";
 import debounce from "lodash.debounce";
 
-const RealTimeField = ({ socketConn, fieldId, value, setValue }) => {
+const RealTimeField = ({ socketConn, blockId, value, setValue }) => {
     const DEBOUNCE_TIMER = 100;
   
     const sendText = (text) => {
       let payload = {
-        id: fieldId,
+        id: blockId,
         content: {
           time: `${Date.now()}`,
           text: `${text}`,
         },
       };
+      console.log(blockId)
       console.log("Sending new block to friends!!!");
       socketConn.send(JSON.stringify(payload));
     };
@@ -30,6 +31,7 @@ const RealTimeField = ({ socketConn, fieldId, value, setValue }) => {
   
     return (
       <div>
+        <label>Block: {blockId} </label>
         <input type="text" value={value} onChange={handleOnChange}></input>
       </div>
     );
