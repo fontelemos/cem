@@ -68,13 +68,14 @@ async fn broadcast_to_peers_is_broadcasting() {
 
     drop(peer_map_lock);
 
-    broadcast_to_peers(&peer_map.clone(), addr1, &block);
+    let broadcast_status = broadcast_to_peers(&peer_map.clone(), addr1, &block);
     tx1.unbounded_send(Message::from(dummy_msg)).unwrap(); // send dummy message to broadcaster
     tx2.unbounded_send(Message::from(error_msg)).unwrap(); // send error message to receiver to avoid blocking this thread
 
     let received_by_addr1 = futures::executor::block_on_stream(rx1).next().unwrap();
     let received_by_addr2 = futures::executor::block_on_stream(rx2).next().unwrap();
 
+    assert_eq!(broadcast_status, true);
     assert_eq!(received_by_addr1.to_string(), dummy_msg.to_string());
     assert_eq!(received_by_addr2.to_string(), block.to_json_string());
 }

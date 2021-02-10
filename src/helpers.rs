@@ -42,7 +42,10 @@ pub async fn handle_connection(stream: TcpStream, state_lock: StateLock, peer_ma
         let write_and_broadcast = incoming.try_for_each(|msg| {
             let response = msg.to_text().unwrap();
             println!("Received a message from {}: {}", addr, response);
-            update_state_and_broadcast(response, &state_lock, &peer_map, addr);
+            update_state(response, &state_lock).and_then(|updated_block| {
+                broadcast_to_peers(&peer_map, addr, &updated_block);
+                Some(())
+            });
             futures::future::ok(())
         });
 
@@ -94,27 +97,30 @@ pub fn apply_processing_rules(stored: Option<&Value>, received: &Value) -> Optio
     updated_content
 }
 
-pub fn broadcast_to_peers(peer_map: &PeerMap, broadcaster_addr: SocketAddr, updated_block: &Block) {
+pub fn broadcast_to_peers(peer_map: &PeerMap, broadcaster_addr: SocketAddr, block: &Block) -> bool {
     let peers = peer_map.lock().unwrap();
     let broadcast_recipients = peers
         .iter()
         .filter(|(peer_addr, _)| peer_addr != &&broadcaster_addr)
         .map(|(_, ws_sink)| ws_sink);
-    let broadcast_msg: String = updated_block.to_json_string();
 
-    for recp in broadcast_recipients {
-        recp.unbounded_send(Message::from(broadcast_msg.clone()))
-            .unwrap();
-    }
+    let broadcast_msg_content: String = block.to_json_string();
+    let broadcast_msg = Message::from(broadcast_msg_content.clone());
+
+    let broadcast_status = broadcast_recipients
+        .map(|recp| recp.unbounded_send(broadcast_msg.clone()))
+        .fold(true, |acc, status| {
+            if status.is_err() {
+                error!("unable to broadcast: {:?}", status);
+            }
+            acc && status.is_ok()
+        });
+
     debug!("DONE broadcasting");
+    broadcast_status
 }
 
-pub fn update_state_and_broadcast(
-    response: &str,
-    state_lock: &StateLock,
-    peer_map: &PeerMap,
-    addr: SocketAddr,
-) -> Option<Block> {
+pub fn update_state(response: &str, state_lock: &StateLock) -> Option<Block> {
     let block = Block::convert(response)?;
     let target_id: String = block.id.clone();
 
@@ -126,7 +132,6 @@ pub fn update_state_and_broadcast(
     state.insert(target_id, updated_content.clone());
 
     let updated_block = block.create_copy_with(updated_content);
-    broadcast_to_peers(&peer_map, addr, &updated_block);
 
     Some(updated_block)
 }
