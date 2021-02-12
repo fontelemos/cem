@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import debounce from "lodash.debounce";
 
-const RealTimeField = ({ socketConn, blockId, value, setValue }) => {
+const RealTimeField = ({ socketConn, blockId, text, setValue }) => {
     const DEBOUNCE_TIMER = 100;
   
     const sendText = (text) => {
@@ -32,7 +32,7 @@ const RealTimeField = ({ socketConn, blockId, value, setValue }) => {
     return (
       <div>
         <label>Block: {blockId} </label>
-        <input type="text" value={value} onChange={handleOnChange}></input>
+        <input type="text" value={text} onChange={handleOnChange}></input>
       </div>
     );
   };

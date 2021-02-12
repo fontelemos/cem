@@ -1,12 +1,63 @@
 import React, { useState, useEffect } from "react";
-import { updateBlockList, updateBlock } from "./utils";
 import RealTimeField from "./RealTimeField";
 
 const socketConn = new WebSocket("ws://127.0.0.1:9001");
 
+const useBlock = () => {
+  let [blocks, setBlocks] = useState({});
+  let blockCounter = 0;
+
+  return {
+    blocks,
+    addBlocks: (newBlocks) => {
+      
+      const newBlockStates = Array.isArray(newBlocks)? newBlocks : [newBlocks]
+      const oldState = {...blocks}
+
+      const newState = newBlockStates
+      .map(({content, id}) => ({
+        [id]: {...content}
+      }))
+      .reduce((acc, newBlock) => ({
+        ...acc,
+        ...newBlock
+      }), oldState);
+
+      console.log(newState)
+      setBlocks(newState)
+    },
+
+    updateBlock: (blockId) => (text) => {
+      setBlocks({
+        ...blocks,
+        [blockId]: {
+          ...blocks[blockId],
+          text: text,
+        },
+      });
+    },
+
+    buildEmptyBlock: () => {
+      let emptyId = `field_${blockCounter}`;
+
+      while (blocks[emptyId]) {
+        blockCounter += 1;
+        emptyId = `field_${blockCounter}`
+      }
+
+      return {
+        id: emptyId,
+        content: {
+          text: "",
+        },
+      }
+    }
+  }
+}
+
 const App = () => {
-  let [blocks, setblocks] = useState({});
-  let [localBlockCounter, setLocalBlockCounter] = useState(0);
+
+  let { blocks, addBlocks, updateBlock, buildEmptyBlock } = useBlock();
 
   useEffect(() => {
     socketConn.onopen = () => {
@@ -17,66 +68,28 @@ const App = () => {
       console.log("======MESSAGE RECEIVED======");
       console.log(message.data);
       const payload = JSON.parse(message.data);
-      const newBlockState = Array.isArray(payload)
-        ? updateBlockList(payload, blocks, buildNewBlock)
-        : updateBlock(payload, blocks, buildNewBlock);
-
-      setblocks({ ...blocks, ...newBlockState });
+      addBlocks(payload);
     };
   });
-
-  const buildNewBlock = (blockId, textValue) => {
-    return {
-      [blockId]: {
-        key: blockId,
-        blockId: blockId,
-        value: textValue,
-        socketConn: socketConn,
-      },
-    };
-  };
-
-  const appendEmptyBlock = () => {
-    let tempCounter = localBlockCounter;
-    while (blocks[`field_${tempCounter}`]) {
-      tempCounter++;
-    }
-    setLocalBlockCounter(tempCounter);
-    const blockId = `field_${tempCounter}`;
-    const newBlockContent = buildNewBlock(blockId, "");
-
-    setblocks({
-      ...blocks,
-      ...newBlockContent,
-    });
-  };
-
-  const buildSetValue = (fieldName) => (text) => {
-    setblocks({
-      ...blocks,
-      [fieldName]: {
-        ...blocks[fieldName],
-        value: text,
-      },
-    });
-  };
-
-  const blockElements = [];
-  for (let fieldName in blocks) {
-    const setValue = buildSetValue(fieldName);
-    blockElements.push(
-      <RealTimeField {...blocks[fieldName]} setValue={setValue} />
-    );
-  }
 
   return (
     <>
       <header className="header">
         <p>WELCOME TO THE CEM WEBPAGE!</p>
       </header>
-      <button onClick={appendEmptyBlock}> Add blocks! </button>
 
-      <section>{blockElements}</section>
+      <button onClick={() => addBlocks(buildEmptyBlock())}> Add blocks! </button>
+
+      <section>
+        {(Object.keys(blocks).map((fieldName) => (
+          <RealTimeField {...blocks[fieldName]}
+            key={fieldName}
+            blockId={fieldName}
+            setValue={updateBlock(fieldName)}
+            socketConn={socketConn}
+          />
+        )))}
+      </section>
 
       <footer>
         <p>Nothing to see down here</p>
