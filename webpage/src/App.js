@@ -7,57 +7,61 @@ const useBlock = () => {
   let [blocks, setBlocks] = useState({});
   let blockCounter = 0;
 
+  const updateBlock = (blockId, text) => {
+    setBlocks({
+      ...blocks,
+      [blockId]: {
+        ...blocks[blockId],
+        text: text,
+      },
+    });
+  };
+
+  const addBlocks = (newBlocks) => {
+    const newBlockStates = Array.isArray(newBlocks) ? newBlocks : [newBlocks];
+    const oldState = { ...blocks };
+
+    const newState = newBlockStates
+      .map(({ content, id }) => ({
+        [id]: { ...content },
+      }))
+      .reduce(
+        (acc, newBlock) => ({
+          ...acc,
+          ...newBlock,
+        }),
+        oldState
+      );
+
+    console.log(newState);
+    setBlocks(newState);
+  };
+
+  const addEmptyBlock = () => {
+    let emptyId = `field_${blockCounter}`;
+    while (blocks[emptyId]) {
+      blockCounter += 1;
+      emptyId = `field_${blockCounter}`;
+    }
+    const emptyBlock = {
+      id: emptyId,
+      content: {
+        text: "",
+      },
+    };
+    addBlocks(emptyBlock);
+  };
+
   return {
     blocks,
-    addBlocks: (newBlocks) => {
-      
-      const newBlockStates = Array.isArray(newBlocks)? newBlocks : [newBlocks]
-      const oldState = {...blocks}
-
-      const newState = newBlockStates
-      .map(({content, id}) => ({
-        [id]: {...content}
-      }))
-      .reduce((acc, newBlock) => ({
-        ...acc,
-        ...newBlock
-      }), oldState);
-
-      console.log(newState)
-      setBlocks(newState)
-    },
-
-    updateBlock: (blockId) => (text) => {
-      setBlocks({
-        ...blocks,
-        [blockId]: {
-          ...blocks[blockId],
-          text: text,
-        },
-      });
-    },
-
-    buildEmptyBlock: () => {
-      let emptyId = `field_${blockCounter}`;
-
-      while (blocks[emptyId]) {
-        blockCounter += 1;
-        emptyId = `field_${blockCounter}`
-      }
-
-      return {
-        id: emptyId,
-        content: {
-          text: "",
-        },
-      }
-    }
-  }
-}
+    addBlocks,
+    updateBlock,
+    addEmptyBlock,
+  };
+};
 
 const App = () => {
-
-  let { blocks, addBlocks, updateBlock, buildEmptyBlock } = useBlock();
+  let { blocks, addBlocks, updateBlock, addEmptyBlock } = useBlock();
 
   useEffect(() => {
     socketConn.onopen = () => {
@@ -78,17 +82,18 @@ const App = () => {
         <p>WELCOME TO THE CEM WEBPAGE!</p>
       </header>
 
-      <button onClick={() => addBlocks(buildEmptyBlock())}> Add blocks! </button>
+      <button onClick={addEmptyBlock}> Add blocks! </button>
 
       <section>
-        {(Object.keys(blocks).map((fieldName) => (
-          <RealTimeField {...blocks[fieldName]}
+        {Object.keys(blocks).map((fieldName) => (
+          <RealTimeField
+            {...blocks[fieldName]}
             key={fieldName}
             blockId={fieldName}
-            setValue={updateBlock(fieldName)}
+            setBlockText={updateBlock}
             socketConn={socketConn}
           />
-        )))}
+        ))}
       </section>
 
       <footer>

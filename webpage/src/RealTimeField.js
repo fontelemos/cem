@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import debounce from "lodash.debounce";
 
-const RealTimeField = ({ socketConn, blockId, text, setValue }) => {
+const RealTimeField = React.memo(({ socketConn, blockId, text, setBlockText }) => {
     const DEBOUNCE_TIMER = 100;
   
     const sendText = (text) => {
@@ -12,22 +12,21 @@ const RealTimeField = ({ socketConn, blockId, text, setValue }) => {
           text: `${text}`,
         },
       };
-      console.log(blockId)
       console.log("Sending new block to friends!!!");
       socketConn.send(JSON.stringify(payload));
     };
-  
+
     //eslint-disable-next-line
     const debouncedSendText = useCallback(
       debounce((text) => sendText(text), DEBOUNCE_TIMER),
       []
     );
   
-    const handleOnChange = (event) => {
+    const handleOnChange = useCallback((event) => {
       let text = event.target.value;
-      setValue(text);
+      setBlockText(blockId, text);
       debouncedSendText(text);
-    };
+    }, [blockId, setBlockText, debouncedSendText]);
   
     return (
       <div>
@@ -35,7 +34,7 @@ const RealTimeField = ({ socketConn, blockId, text, setValue }) => {
         <input type="text" value={text} onChange={handleOnChange}></input>
       </div>
     );
-  };
+  });
   
   export default RealTimeField;
   
