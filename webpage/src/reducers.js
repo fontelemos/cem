@@ -42,6 +42,15 @@ const blockReducer = (state, action) => {
         },
       };
       return { ...state, [emptyId]: { ...emptyBlock } };
+    case "swap":
+      let {blockId1, blockId2} = action;
+      console.log(action)
+      let content1 = state[blockId1];
+      let content2 = state[blockId2];
+      state[blockId1] = content2;
+      state[blockId2] = content1;
+      console.log(state)
+      return state
     default:
       return state
   }

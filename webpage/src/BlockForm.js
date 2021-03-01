@@ -1,6 +1,10 @@
 import React, { useEffect, useReducer } from "react";
 import RealTimeField from "./RealTimeField";
 import { blockReducer } from "./reducers";
+import DragBlock from "./DragBlock";
+import { DndProvider } from 'react-dnd'
+import { HTML5Backend } from 'react-dnd-html5-backend'
+
 
 const socketConn = new WebSocket("ws://127.0.0.1:9001");
 
@@ -21,7 +25,7 @@ const BlockForm = () => {
   });
 
   return (
-    <>
+    <DndProvider backend={HTML5Backend}>
       <button onClick={() => dispatch({ type: "addEmpty" })}> Add blocks! </button>
 
       <section>
@@ -35,7 +39,18 @@ const BlockForm = () => {
           />
         ))}
       </section>
-    </>
+
+      <section>
+        {Object.keys(blocks).map((fieldName) => (
+            <DragBlock
+              key={`${fieldName}--drag`}
+              blockId={fieldName}
+              text={blocks[fieldName].text}
+              blockDispatch={dispatch}
+            />
+        ))}
+      </section>
+    </DndProvider>
   );
 };
 
