@@ -1,31 +1,38 @@
-const updateBlock = (payload, blocks, buildNewBlock) => {
-  const id = payload?.id;
-  const newText = payload?.content?.text;
-  const storedContent = blocks[id];
+import debounce from "lodash.debounce";
 
-  if (storedContent) {
-    console.log("Updated old block!");
+const createConnectionHandler = ({ socketConn, debounceTimer }) => {
+  const buildBlock = (blockId, text) => {
     return {
-      [id]: {
-        ...storedContent,
-        value: newText,
+      id: blockId,
+      content: {
+        time: `${Date.now()}`,
+        text: `${text}`,
       },
     };
-  }
-  console.log("Received new block from friend!!");
-  return buildNewBlock(id, newText);
+  };
+
+  const sendBlock = (blockId, text) => {
+    let payload = buildBlock(blockId, text);
+    console.log("Sending new block to friends!!!");
+    console.log(payload);
+    socketConn.send(JSON.stringify(payload));
+  };
+
+  const sendMultipleBlocks = (blocks) => {
+    blocks.forEach(({ blockId, text }) => {
+      console.log(`sending block:${blockId} with text:${text}`);
+      socketConn.send(JSON.stringify(buildBlock(blockId, text)));
+    });
+  };
+
+  const debouncedSendBlock = debounce(
+    (blockId, text) => sendBlock(blockId, text),
+    debounceTimer
+  );
+  return {
+    sendBlock: debouncedSendBlock,
+    sendMultipleBlocks,
+  };
 };
 
-const updateBlockList = (payloadArray, blocks, buildNewBlock) => {
-  let newBlockstate = {};
-  payloadArray.forEach((payload) => {
-    let newBlock = updateBlock(payload, blocks, buildNewBlock);
-    newBlockstate = {
-      ...newBlockstate,
-      ...newBlock,
-    };
-  });
-  return newBlockstate;
-};
-
-export { updateBlock, updateBlockList };
+export { createConnectionHandler };
