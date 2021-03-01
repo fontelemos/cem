@@ -50,11 +50,11 @@ const blockReducer = (state, action) => {
       callback([
         {
           blockId: blockId1,
-          text: state[blockId1].text,
+          text: newState[blockId1].text,
         },
         {
           blockId: blockId2,
-          text: state[blockId2].text,
+          text: newState[blockId2].text,
         },
       ]); // TODO REFACTOR this weird interface!
       return newState;
