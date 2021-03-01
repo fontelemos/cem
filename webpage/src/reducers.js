@@ -43,16 +43,23 @@ const blockReducer = (state, action) => {
       };
       return { ...state, [emptyId]: { ...emptyBlock } };
     case "swap":
-      let {blockId1, blockId2} = action;
-      console.log(action)
-      let content1 = state[blockId1];
-      let content2 = state[blockId2];
-      state[blockId1] = content2;
-      state[blockId2] = content1;
-      console.log(state)
-      return state
+      let { blockId1, blockId2, callback } = action;
+      const newState = {...state};
+      newState[blockId1] = state[blockId2];
+      newState[blockId2] = state[blockId1];
+      callback([
+        {
+          blockId: blockId1,
+          text: state[blockId1].text,
+        },
+        {
+          blockId: blockId2,
+          text: state[blockId2].text,
+        },
+      ]); // TODO REFACTOR this weird interface!
+      return newState;
     default:
-      return state
+      return state;
   }
 };
 

@@ -5,7 +5,7 @@ import { ITEM_TYPES } from "./constants";
 /**
  * Your Component
  */
-const DragBlock = ({ isDragging, text, blockDispatch, blockId }) => {
+const DragBlock = ({ isDragging, text, swapBlock, blockId }) => {
   const [{ opacity }, dragRef] = useDrag(
     () => ({
       item: { type: ITEM_TYPES.DragBlock, text, blockId: blockId },
@@ -18,13 +18,7 @@ const DragBlock = ({ isDragging, text, blockDispatch, blockId }) => {
 
   const [, drop] = useDrop(() => ({
     accept: ITEM_TYPES.DragBlock,
-    drop: (droppedProps) => {
-      blockDispatch({
-        blockId1: droppedProps.blockId,
-        blockId2: blockId,
-        type: "swap",
-      });
-    },
+    drop: (droppedProps) => swapBlock(droppedProps.blockId, blockId)
   }));
 
   return (
