@@ -36,12 +36,12 @@ const blockReducer = (state, action) => {
         emptyId = `field_${blockCounter}`;
       }
       const emptyBlock = {
-        id: emptyId,
-        content: {
+        [emptyId]: {
           text: "",
         },
       };
-      return { ...state, [emptyId]: { ...emptyBlock } };
+
+      return { ...state, ...emptyBlock };
     case "swap":
       let { blockId1, blockId2, callback } = action;
       const newState = { ...state };
