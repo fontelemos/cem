@@ -1,9 +1,10 @@
 import React, { useCallback } from "react";
 import debounce from "lodash.debounce";
 
-const RealTimeField = React.memo(({ socketConn, blockId, text, setBlockText }) => {
+const RealTimeField = React.memo(
+  ({ socketConn, blockId, text, blockDispatch }) => {
     const DEBOUNCE_TIMER = 100;
-  
+
     const sendText = (text) => {
       let payload = {
         id: blockId,
@@ -21,20 +22,23 @@ const RealTimeField = React.memo(({ socketConn, blockId, text, setBlockText }) =
       debounce((text) => sendText(text), DEBOUNCE_TIMER),
       []
     );
-  
-    const handleOnChange = useCallback((event) => {
-      let text = event.target.value;
-      setBlockText(blockId, text);
-      debouncedSendText(text);
-    }, [blockId, setBlockText, debouncedSendText]);
-  
+
+    const handleOnChange = useCallback(
+      (event) => {
+        let text = event.target.value;
+        blockDispatch({ blockId, text, type: "update" });
+        debouncedSendText(text);
+      },
+      [blockId, blockDispatch, debouncedSendText]
+    );
+
     return (
       <div>
         <label>Block: {blockId} </label>
-        <input type="text" value={text} onChange={handleOnChange}></input>
+        <input type="text" value={text || ""} onChange={handleOnChange}></input>
       </div>
     );
-  });
-  
-  export default RealTimeField;
-  
+  }
+);
+
+export default RealTimeField;

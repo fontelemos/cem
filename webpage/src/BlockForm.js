@@ -1,11 +1,11 @@
-import React, { useEffect } from "react";
-import { useBlock } from "./customHooks.js";
+import React, { useEffect, useReducer } from "react";
 import RealTimeField from "./RealTimeField";
+import { blockReducer } from "./reducers";
 
 const socketConn = new WebSocket("ws://127.0.0.1:9001");
 
 const BlockForm = () => {
-  let [blocks, { addBlocks, updateBlock, addEmptyBlock }] = useBlock();
+  let [blocks, dispatch] = useReducer(blockReducer, {});
 
   useEffect(() => {
     socketConn.onopen = () => {
@@ -16,13 +16,13 @@ const BlockForm = () => {
       console.log("======MESSAGE RECEIVED======");
       console.log(message.data);
       const payload = JSON.parse(message.data);
-      addBlocks(payload);
+      dispatch({ blocks: payload, type: "add" });
     };
   });
 
   return (
     <>
-      <button onClick={addEmptyBlock}> Add blocks! </button>
+      <button onClick={() => dispatch({ type: "addEmpty" })}> Add blocks! </button>
 
       <section>
         {Object.keys(blocks).map((fieldName) => (
@@ -30,7 +30,7 @@ const BlockForm = () => {
             {...blocks[fieldName]}
             key={fieldName}
             blockId={fieldName}
-            setBlockText={updateBlock}
+            blockDispatch={dispatch}
             socketConn={socketConn}
           />
         ))}
