@@ -4,7 +4,7 @@ const blockReducer = (state, action) => {
   switch (action.type) {
     case "update":
       const { text, blockId } = action;
-      console.log(state)
+      console.log(state);
       return {
         ...state,
         [blockId]: {
@@ -44,7 +44,7 @@ const blockReducer = (state, action) => {
       return { ...state, [emptyId]: { ...emptyBlock } };
     case "swap":
       let { blockId1, blockId2, callback } = action;
-      const newState = {...state};
+      const newState = { ...state };
       newState[blockId1] = state[blockId2];
       newState[blockId2] = state[blockId1];
       callback([

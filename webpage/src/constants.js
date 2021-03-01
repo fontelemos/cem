@@ -1,5 +1,5 @@
 const ITEM_TYPES = {
-    DragBlock: "card"
-}
+  DragBlock: "card",
+};
 
-export { ITEM_TYPES }
+export { ITEM_TYPES };

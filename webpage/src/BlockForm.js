@@ -4,50 +4,17 @@ import { blockReducer } from "./reducers";
 import DragBlock from "./DragBlock";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import debounce from "lodash.debounce";
+import { createConnectionHandler } from "./utils";
 
 const socketConn = new WebSocket("ws://127.0.0.1:9001");
-
-const createConnectionHandler = ({ socketConn, debounceTimer }) => {
-
-  const buildBlock = (blockId, text) => {
-    return {
-      id: blockId,
-      content: {
-        time: `${Date.now()}`,
-        text: `${text}`,
-      },
-    };
-  }
-
-  const sendBlock = (blockId, text) => {
-    let payload = buildBlock(blockId, text);
-    console.log("Sending new block to friends!!!");
-    console.log(payload);
-    socketConn.send(JSON.stringify(payload));
-  };
-
-  const sendMultipleBlocks = (blocks) => {
-    blocks.forEach(({blockId, text}) => {
-      console.log(`sending block:${blockId} with text:${text}`)
-      socketConn.send(JSON.stringify(buildBlock(blockId, text)));
-    })
-  }
-
-  const debouncedSendBlock = debounce(
-    (blockId, text) => sendBlock(blockId, text),
-    debounceTimer
-  );
-  return {
-    sendBlock: debouncedSendBlock,
-    sendMultipleBlocks
-  };
-};
+const debounceTimer = 300;
 
 const BlockForm = () => {
-  let debounceTimer = 300;
   let [blocks, dispatch] = useReducer(blockReducer, {});
-  let {sendBlock, sendMultipleBlocks} = createConnectionHandler({ socketConn, debounceTimer });
+  let { sendBlock, sendMultipleBlocks } = createConnectionHandler({
+    socketConn,
+    debounceTimer,
+  });
 
   let connectedSendBlock = useCallback(
     (blockId, text) => {
@@ -63,8 +30,8 @@ const BlockForm = () => {
         blockId1,
         blockId2,
         type: "swap",
-        callback: sendMultipleBlocks
-      })
+        callback: sendMultipleBlocks,
+      });
     },
     [sendMultipleBlocks]
   );

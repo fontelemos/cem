@@ -2,9 +2,6 @@ import React from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { ITEM_TYPES } from "./constants";
 
-/**
- * Your Component
- */
 const DragBlock = ({ isDragging, text, swapBlock, blockId }) => {
   const [{ opacity }, dragRef] = useDrag(
     () => ({
@@ -18,7 +15,7 @@ const DragBlock = ({ isDragging, text, swapBlock, blockId }) => {
 
   const [, drop] = useDrop(() => ({
     accept: ITEM_TYPES.DragBlock,
-    drop: (droppedProps) => swapBlock(droppedProps.blockId, blockId)
+    drop: (droppedProps) => swapBlock(droppedProps.blockId, blockId),
   }));
 
   return (
