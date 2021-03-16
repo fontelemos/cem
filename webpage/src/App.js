@@ -4,15 +4,8 @@ import BlockForm from "./BlockForm";
 const App = () => {
   return (
     <>
-      <header className="header">
-        <p>WELCOME TO THE CEM WEBPAGE!</p>
-      </header>
-
+      <p>WELCOME TO THE CEM WEBPAGE!</p>
       <BlockForm />
-
-      <footer>
-        <p>Nothing to see down here</p>
-      </footer>
     </>
   );
 };

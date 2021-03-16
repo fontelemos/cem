@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useReducer } from "react";
 import RealTimeField from "./RealTimeField";
 import { blockReducer } from "./reducers";
 import DragBlock from "./DragBlock";
+import PagePreview from "./PagePreview";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { createConnectionHandler } from "./utils";
@@ -50,12 +51,11 @@ const BlockForm = () => {
   });
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <button onClick={() => dispatch({ type: "addEmpty" })}>
-        Add blocks!
-      </button>
-
-      <section>
+    <section className="page">
+      <div className="page__admin">
+        <button onClick={() => dispatch({ type: "addEmpty" })}>
+          Add blocks!
+        </button>
         {Object.keys(blocks).map((fieldName) => (
           <RealTimeField
             {...blocks[fieldName]}
@@ -64,19 +64,21 @@ const BlockForm = () => {
             sendBlock={connectedSendBlock}
           />
         ))}
-      </section>
 
-      <section>
-        {Object.keys(blocks).map((fieldName) => (
-          <DragBlock
-            key={`${fieldName}--drag`}
-            blockId={fieldName}
-            text={blocks[fieldName].text}
-            swapBlock={connectedSwapBlock}
-          />
-        ))}
-      </section>
-    </DndProvider>
+        <DndProvider backend={HTML5Backend}>
+          {Object.keys(blocks).map((fieldName) => (
+            <DragBlock
+              key={`${fieldName}--drag`}
+              blockId={fieldName}
+              text={blocks[fieldName].text}
+              swapBlock={connectedSwapBlock}
+            />
+          ))}
+        </DndProvider>
+      </div>
+
+      <PagePreview blocks={blocks} />
+    </section>
   );
 };
 
