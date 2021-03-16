@@ -4,14 +4,17 @@ const blockReducer = (state, action) => {
   switch (action.type) {
     case "update":
       const { text, blockId } = action;
-      console.log(state)
-      return {
-        ...state,
-        [blockId]: {
-          ...state[blockId],
-          text: text,
-        },
-      };
+      const oldBlock = state[blockId];
+      console.log(state);
+      return oldBlock
+        ? {
+            ...state,
+            [blockId]: {
+              ...oldBlock,
+              text: text,
+            },
+          }
+        : state;
 
     case "add":
       const { blocks } = action;
@@ -36,14 +39,30 @@ const blockReducer = (state, action) => {
         emptyId = `field_${blockCounter}`;
       }
       const emptyBlock = {
-        id: emptyId,
-        content: {
+        [emptyId]: {
           text: "",
         },
       };
-      return { ...state, [emptyId]: { ...emptyBlock } };
+
+      return { ...state, ...emptyBlock };
+    case "swap":
+      let { blockId1, blockId2, callback } = action;
+      const newState = { ...state };
+      newState[blockId1] = state[blockId2];
+      newState[blockId2] = state[blockId1];
+      callback([
+        {
+          blockId: blockId1,
+          text: newState[blockId1].text,
+        },
+        {
+          blockId: blockId2,
+          text: newState[blockId2].text,
+        },
+      ]); // TODO REFACTOR this weird interface!
+      return newState;
     default:
-      return state
+      return state;
   }
 };
 
