@@ -1,0 +1,26 @@
+.page {
+    display: flex;
+    flex-direction: row;
+    &__preview {
+        margin-left: 200px;
+        border: 1px black solid;
+
+        header {
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+            font-size: 24px;
+            text-align: center;
+        }
+        &__content {
+            &__square {
+                border: 5px #3eb9ed solid;
+                border-radius: 25px;
+                background-color: #525252;
+                color: white;
+                font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+                font-size: 18px;
+                text-align: center;
+                margin: 10px;
+            }
+        }
+    }
+}
