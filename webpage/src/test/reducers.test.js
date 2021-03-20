@@ -33,22 +33,24 @@ describe("blockReducer tests", () => {
         text: "",
       },
     };
-    let action = { type: "addEmpty" };
+    let action = { type: "addEmpty", blockId: "field_0" };
     let resultState = blockReducer(MOCK_STATE, action);
     expect(resultState).toEqual(expectedState);
   });
 
-  test("[addEmpty] should increment default key by 1 (e.g: field_0 to field_1)", () => {
+  test("[addEmpty] should add keys", () => {
+    const emptyKeys = {
+      text: "",
+      randomStuff: 12,
+      order: 1232
+    }
     const expectedState = {
       ...MOCK_STATE,
-      field_0: {
-        text: "",
-      },
-      field_1: {
-        text: "",
+      customKey: {
+        ...emptyKeys
       },
     };
-    let action = { type: "addEmpty" };
+    let action = { type: "addEmpty", blockId: "customKey",  emptyKeys };
     let tempState = blockReducer(MOCK_STATE, action);
     let resultState = blockReducer(tempState, action);
     expect(resultState).toEqual(expectedState);

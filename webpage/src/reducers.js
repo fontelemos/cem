@@ -1,9 +1,7 @@
-let blockCounter = 0;
-
 const blockReducer = (state, action) => {
   switch (action.type) {
-    case "update":
-      const { text, blockId } = action;
+    case "update": {
+      let { text, blockId } = action;
       const oldBlock = state[blockId];
       console.log(state);
       return oldBlock
@@ -15,8 +13,9 @@ const blockReducer = (state, action) => {
             },
           }
         : state;
+    }
 
-    case "add":
+    case "add": {
       const { blocks } = action;
       const newBlockStates = Array.isArray(blocks) ? blocks : [blocks];
 
@@ -31,21 +30,25 @@ const blockReducer = (state, action) => {
           }),
           state
         );
+    }
 
-    case "addEmpty":
-      let emptyId = `field_${blockCounter}`;
-      while (state[emptyId]) {
-        blockCounter += 1;
-        emptyId = `field_${blockCounter}`;
+    case "addEmpty": {
+      let { emptyKeys, blockId } = action;
+      if (!blockId) {
+        console.warn("[addEmpty] Unable to add block, ID already in use");
+        return state;
       }
+
+      emptyKeys = emptyKeys ?? { text: "" };
       const emptyBlock = {
-        [emptyId]: {
-          text: "",
+        [blockId]: {
+          ...emptyKeys,
         },
       };
-
       return { ...state, ...emptyBlock };
-    case "swap":
+    }
+
+    case "swap": {
       let { blockId1, blockId2, callback } = action;
       const newState = { ...state };
       newState[blockId1] = state[blockId2];
@@ -61,6 +64,7 @@ const blockReducer = (state, action) => {
         },
       ]); // TODO REFACTOR this weird interface!
       return newState;
+    }
     default:
       return state;
   }
