@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useReducer } from "react";
+import AddBlockButton from "./AddBlockButton"
 import RealTimeField from "./RealTimeField";
 import { blockReducer } from "./reducers";
 import DragBlock from "./DragBlock";
@@ -53,9 +54,7 @@ const BlockForm = () => {
   return (
     <section className="page">
       <div className="page__admin">
-        <button onClick={() => dispatch({ type: "addEmpty" })}>
-          Add blocks!
-        </button>
+        <AddBlockButton dispatch={dispatch} />
         {Object.keys(blocks).map((fieldName) => (
           <RealTimeField
             {...blocks[fieldName]}
