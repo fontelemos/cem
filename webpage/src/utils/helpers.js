@@ -1,6 +1,6 @@
 import debounce from "lodash.debounce";
 
-const createConnectionHandler = ({ socketConn, debounceTimer }) => {
+const createConnectionHandler = ({ socketConn, debounceTimer = 100 }) => {
   const buildBlock = (blockId, content) => {
     return {
       id: blockId,
@@ -11,17 +11,18 @@ const createConnectionHandler = ({ socketConn, debounceTimer }) => {
     };
   };
 
-  const sendBlock = (blockId, text) => {
-    let payload = buildBlock(blockId, text);
+  const sendBlock = (blockId, content) => {
+    let payload = buildBlock(blockId, content);
+    let jsonContent = JSON.stringify(payload)
     console.log("Sending new block to friends!!!");
     console.log(payload);
-    socketConn.send(JSON.stringify(payload));
+    socketConn.send(jsonContent);
   };
 
   const sendMultipleBlocks = (blocks) => {
-    blocks.forEach(({ blockId, text }) => {
-      console.log(`sending block:${blockId} with text:${text}`);
-      socketConn.send(JSON.stringify(buildBlock(blockId, text)));
+    blocks.forEach(({ blockId, content }) => {
+      console.log(`sending block:${blockId} with content:${content}`);
+      socketConn.send(JSON.stringify(buildBlock(blockId, content)));
     });
   };
 
@@ -30,7 +31,7 @@ const createConnectionHandler = ({ socketConn, debounceTimer }) => {
     debounceTimer
   );
   return {
-    sendBlock: debouncedSendBlock,
+    sendBlock: debounceTimer? debouncedSendBlock: sendBlock,
     sendMultipleBlocks,
   };
 };
