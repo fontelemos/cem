@@ -6,7 +6,7 @@ import DragBlock from "./components/DragBlock";
 import PagePreview from "./PagePreview";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { createConnectionHandler } from "./utils/utils";
+import { createConnectionHandler } from "./utils/helpers";
 
 const socketConn = new WebSocket("ws://127.0.0.1:9001");
 const debounceTimer = 300;
