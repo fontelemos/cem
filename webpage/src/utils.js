@@ -1,12 +1,12 @@
 import debounce from "lodash.debounce";
 
 const createConnectionHandler = ({ socketConn, debounceTimer }) => {
-  const buildBlock = (blockId, text) => {
+  const buildBlock = (blockId, content) => {
     return {
       id: blockId,
       content: {
         time: `${Date.now()}`,
-        text: `${text}`,
+        ...content
       },
     };
   };

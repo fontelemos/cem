@@ -18,9 +18,9 @@ const BlockForm = () => {
   });
 
   let connectedSendBlock = useCallback(
-    (blockId, text) => {
-      dispatch({ blockId, text, type: "update" });
-      sendBlock(blockId, text);
+    (blockId, content) => {
+      dispatch({ blockId, content, type: "update" });
+      sendBlock(blockId, content);
     },
     [sendBlock]
   );

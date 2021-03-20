@@ -3,8 +3,10 @@ import React, { useCallback } from "react";
 const RealTimeField = React.memo(({ blockId, text, sendBlock }) => {
   const handleOnChange = useCallback(
     (event) => {
-      let text = event.target.value;
-      sendBlock(blockId, text);
+      let content = {
+        text: event.target.value
+      }
+      sendBlock(blockId, content);
     },
     [blockId, sendBlock]
   );

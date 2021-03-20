@@ -1,15 +1,14 @@
 const blockReducer = (state, action) => {
   switch (action.type) {
     case "update": {
-      let { text, blockId } = action;
+      let { content, blockId } = action;
       const oldBlock = state[blockId];
-      console.log(state);
       return oldBlock
         ? {
             ...state,
             [blockId]: {
               ...oldBlock,
-              text: text,
+              ...content
             },
           }
         : state;

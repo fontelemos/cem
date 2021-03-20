@@ -94,7 +94,9 @@ describe("blockReducer tests", () => {
 
   test("[update] should only change target block with same blockId", () => {
     let action = {
-      text: "surprise! new text here!",
+      content: {
+        text: "surprise! new text here!"
+      },
       blockId: "very secret id",
       type: "update",
     };
