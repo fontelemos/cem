@@ -1,4 +1,4 @@
-import { blockReducer } from "../reducers";
+import blockReducer from "../reducers/blockReducer";
 
 describe("blockReducer tests", () => {
   const MOCK_STATE = {

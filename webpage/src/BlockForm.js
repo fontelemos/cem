@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useReducer } from "react";
-import AddBlockButton from "./AddBlockButton"
-import RealTimeField from "./RealTimeField";
-import { blockReducer } from "./reducers";
-import DragBlock from "./DragBlock";
+import AddBlockButton from "./components/AddBlockButton"
+import RealTimeField from "./components/RealTimeField";
+import blockReducer from "./reducers/blockReducer";
+import DragBlock from "./components/DragBlock";
 import PagePreview from "./PagePreview";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { createConnectionHandler } from "./utils";
+import { createConnectionHandler } from "./utils/utils";
 
 const socketConn = new WebSocket("ws://127.0.0.1:9001");
 const debounceTimer = 300;

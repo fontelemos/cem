@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react"
+import React, { useCallback, useState } from "react"
 
 const useInput = (defaultValue) => {
   let [text, setText ] = useState(defaultValue)

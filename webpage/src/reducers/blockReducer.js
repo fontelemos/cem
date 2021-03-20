@@ -69,4 +69,4 @@ const blockReducer = (state, action) => {
   }
 };
 
-export { blockReducer };
+export default blockReducer;

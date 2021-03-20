@@ -1,6 +1,6 @@
 import React from "react";
 import { useDrag, useDrop } from "react-dnd";
-import { ITEM_TYPES } from "./constants";
+import { ITEM_TYPES } from "../utils/constants";
 
 const DragBlock = ({ isDragging, text, swapBlock, blockId }) => {
   const [{ opacity }, dragRef] = useDrag(
